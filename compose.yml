@@ -1,0 +1,73 @@
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+networks:
+  medb:
+
+volumes:
+  me-db-data:
+  mcp-state-data:
+
+services:
+  me-db-mcp:
+    image: ghcr.io/lidiaev/me-db-mcp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: me-db-mcp
+    restart: unless-stopped
+    networks: [medb]
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - ME_DB_PATH=/mnt/me-db
+      - MCP_STATE_PATH=/mnt/mcp-state
+      - MCP_OAUTH_SECRET=${MCP_OAUTH_SECRET}
+      - MCP_BASE_URL=${MCP_BASE_URL}
+      - MCP_BROWSER_URL=${MCP_BROWSER_URL}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+    volumes:
+      - me-db-data:/mnt/me-db
+      - mcp-state-data:/mnt/mcp-state
+    mem_limit: 256m
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  me-db-silverbullet:
+    # Pinned by digest for reproducibility; bump periodically for updates.
+    image: zefhemel/silverbullet:latest@sha256:9deb1a9aca5c98bcce943a2f7f8b66ca980c608ea074628a506ccba830a465df
+    container_name: me-db-silverbullet
+    restart: unless-stopped
+    networks: [medb]
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - SB_USER=admin:${SB_PASSWORD}
+    volumes:
+      - me-db-data:/space
+    mem_limit: 200m
+    logging: *logging
+
+  me-db-watcher:
+    image: ghcr.io/lidiaev/me-db-watcher:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.watcher
+    container_name: me-db-watcher
+    restart: unless-stopped
+    networks: [medb]
+    environment:
+      - ME_DB_PATH=/mnt/me-db
+      - GIT_BRANCH=master
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - GITHUB_REPO=${GITHUB_REPO}
+    volumes:
+      - me-db-data:/mnt/me-db
+    mem_limit: 64m
+    logging: *logging

@@ -1,0 +1,17 @@
+# Knowledge base on one subdomain: Silverbullet at /, MCP endpoints at /mcp, /oauth, etc.
+# (subdomain uses a hyphen — underscores are invalid in hostnames/TLS.)
+# :8443 — Silverbullet + Claude Code. :443 — Claude.ai connector backend.
+me-db.{$DOMAIN_BASE}, me-db.{$DOMAIN_BASE}:443 {
+	@mcp path /mcp* /oauth/* /register /health /.well-known/*
+	handle @mcp {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
+
+# OAuth browser popup — separate origin without Silverbullet's service worker.
+auth.{$DOMAIN_BASE}, auth.{$DOMAIN_BASE}:443 {
+	reverse_proxy 127.0.0.1:8000
+}

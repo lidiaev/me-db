@@ -1,0 +1,10 @@
+.git
+.github
+__pycache__
+*.pyc
+.env
+*.swp
+*.md
+LICENSE
+compose.yml
+site.caddy
